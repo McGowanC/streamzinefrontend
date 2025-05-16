@@ -399,17 +399,24 @@ document.addEventListener('DOMContentLoaded', () => {
             clearError();
             showLoading(true);
 
-            const videoUrl = videoUrlInput.value.trim();
+            let rawVideoUrl = videoUrlInput.value.trim();
             const searchIntentValue = searchIntentInput.value.trim();
 
-            if (!videoUrl) {
+            if (!rawVideoUrl) {
                 displayError('Please enter a YouTube video URL.');
                 showLoading(false);
                 return;
             }
+
+            const questionMarkIndex = rawVideoUrl.indexOf('?');
+            let formattedVideoUrl = rawVideoUrl;
+            if (questionMarkIndex !== -1) {
+                formattedVideoUrl = rawVideoUrl.substring(0, questionMarkIndex);
+            }
+
             try {
-                new URL(videoUrl);
-                if (!/^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/)/.test(videoUrl)) {
+                new URL(formattedVideoUrl);
+                if (!/^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/)/.test(formattedVideoUrl)) {
                     displayError('URL must be a valid YouTube video link (e.g., youtube.com/watch?v=... or youtu.be/...).');
                     showLoading(false);
                     return;
