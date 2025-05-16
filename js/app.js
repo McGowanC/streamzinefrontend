@@ -25,8 +25,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const noHistoryP = document.getElementById('no-history');
 
     // Configuration
-    //const API_BASE_URL = 'http://localhost:8000';
-    const API_BASE_URL = 'https://streamzine.onrender.com';
+    //const API_BASE_URL = 'http://localhost:8080';
+    const API_BASE_URL = '';
     const MAX_HISTORY_ITEMS = 5;
 
     // State
@@ -424,7 +424,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const requestBody = { video_url: videoUrl };
                 if (searchIntentValue) { requestBody.search_intent = searchIntentValue; }
 
-                const response = await fetch(`${API_BASE_URL}/process-video`, {
+                const response = await fetch(`/api/process-video`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
