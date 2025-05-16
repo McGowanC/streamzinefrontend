@@ -428,7 +428,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             try {
-                const requestBody = { video_url: videoUrl };
+                const requestBody = { video_url: formattedVideoUrl };
                 if (searchIntentValue) { requestBody.search_intent = searchIntentValue; }
 
                 const response = await fetch(`/api/process-video`, {
