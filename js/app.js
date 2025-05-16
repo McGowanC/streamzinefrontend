@@ -1,3 +1,5 @@
+// frontend/js/app.js
+
 document.addEventListener('DOMContentLoaded', () => {
     console.log("DOM fully loaded and parsed. app.js executing.");
 
@@ -25,8 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const noHistoryP = document.getElementById('no-history');
 
     // Configuration
-    //const API_BASE_URL = 'http://localhost:8080';
-    const API_BASE_URL = '';
+    const API_BASE_URL = ''; // Use empty string for root-relative API calls to Vercel Serverless Functions
     const MAX_HISTORY_ITEMS = 5;
 
     // State
@@ -48,12 +49,11 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     function createYouTubePlayer(videoId, videoTitle) {
-        // ... (no changes here) ...
         currentVideoId = videoId;
         videoPlayerSection.style.display = 'block';
         videoPlayerTitle.textContent = videoTitle || "Video Player";
 
-        youtubePlayerContainer.innerHTML = '';
+        youtubePlayerContainer.innerHTML = ''; // Clear previous player if any
         console.log(`Creating new YT.Player for videoId: ${videoId}`);
 
         ytPlayer = new YT.Player(youtubePlayerContainer, {
@@ -78,14 +78,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         case 100: errorReason = "Video not found or removed."; break;
                         case 101: case 150: errorReason = "Embedding disabled by the video owner."; break;
                     }
-                    displayError(`YouTube Player Error: ${errorReason} (Code ${event.data})`);
+                    // Avoid displaying this error if a more specific API error is already shown
+                    if (!errorMessageDiv.textContent.includes("API Error")) {
+                        displayError(`YouTube Player Error: ${errorReason} (Code ${event.data})`);
+                    }
                 }
             }
         });
     }
 
     function loadOrUpdateYouTubePlayer(videoId, videoTitle) {
-        // ... (no changes here) ...
         if (!videoId) {
             console.log("No videoId provided, hiding player.");
             videoPlayerSection.style.display = 'none';
@@ -99,6 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (isYouTubeApiReady) {
             if (ytPlayer && typeof ytPlayer.loadVideoById === 'function' && currentVideoId === videoId) {
+                // Video ID is the same, ensure player is visible and title is updated
                 videoPlayerSection.style.display = 'block';
                 videoPlayerTitle.textContent = videoTitle || "Video Player";
             } else if (ytPlayer && typeof ytPlayer.loadVideoById === 'function') {
@@ -108,6 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 ytPlayer.loadVideoById(videoId);
                 currentVideoId = videoId;
             } else {
+                // No player or different video, create new player
                 createYouTubePlayer(videoId, videoTitle);
             }
         } else {
@@ -118,7 +122,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Timestamp Link Click Handler ---
     function handleTimestampLinkClick(event) {
-        // ... (no changes here) ...
         const targetLink = event.target.closest('a.youtube-timestamp-link');
         if (targetLink) {
             event.preventDefault();
@@ -137,17 +140,22 @@ document.addEventListener('DOMContentLoaded', () => {
             if (ytPlayer && typeof ytPlayer.seekTo === 'function') {
                 if (currentVideoId === videoIdFromLink) {
                     console.log(`Seeking current player to: ${timestampInSeconds}`);
-                    ytPlayer.playVideo();
+                    ytPlayer.playVideo(); // Start playing if not already
+                    // A slight delay can help ensure seekTo works after playVideo command
                     setTimeout(() => {
                         ytPlayer.seekTo(timestampInSeconds, true);
+                        // Ensure it's playing after seek, sometimes it might pause
                         if (ytPlayer.getPlayerState() !== YT.PlayerState.PLAYING) {
-                            ytPlayer.playVideo();
+                           ytPlayer.playVideo();
                         }
-                    }, 150);
+                    }, 150); // 150ms delay, adjust if needed
 
                     videoPlayerSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 } else {
+                    // If video is different, ideally load it first, then seek.
+                    // For now, just log a warning or consider implementing this.
                     console.warn(`Clicked timestamp for video ${videoIdFromLink}, but player has ${currentVideoId} loaded. Consider loading new video.`);
+                    // Potentially: loadOrUpdateYouTubePlayer(videoIdFromLink, "Video Title from History/Data"); then seek.
                 }
             } else {
                 console.error("YouTube player (ytPlayer) is not available or seekTo is not a function.");
@@ -156,24 +164,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     fullArticleTextDiv.addEventListener('click', handleTimestampLinkClick);
 
+
     // --- Helper Functions ---
     function displayError(message) {
-        // ... (no changes here) ...
         errorMessageDiv.textContent = message;
         errorMessageDiv.style.display = 'block';
         outputSection.style.display = 'none';
-        videoPlayerSection.style.display = 'none';
+        // videoPlayerSection.style.display = 'none'; // Keep player if it was for a previous successful video
         copyToClipboardButton.style.display = 'none';
     }
 
     function clearError() {
-        // ... (no changes here) ...
         errorMessageDiv.textContent = '';
         errorMessageDiv.style.display = 'none';
     }
 
     function showLoading(isLoading) {
-        // ... (no changes here) ...
         if (isLoading) {
             loadingIndicator.style.display = 'block';
             processButton.disabled = true;
@@ -186,25 +192,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateHistory(articleData) {
-        // ... (no changes here) ...
         if (!articleData || !articleData.video_data || !articleData.video_data.video_id) {
             console.warn("Attempted to add invalid article data to history.", articleData);
             return;
         }
+        // Remove existing entry for the same video ID to avoid duplicates and move to top
         const existingIndex = history.findIndex(item => item.video_data.video_id === articleData.video_data.video_id);
         if (existingIndex > -1) {
             history.splice(existingIndex, 1);
         }
-        history.unshift(articleData);
+        history.unshift(articleData); // Add to the beginning
         if (history.length > MAX_HISTORY_ITEMS) {
-            history.pop();
+            history.pop(); // Remove the oldest if exceeding max
         }
         renderHistoryList();
+        // Persist to localStorage (optional, for cross-session history)
+        // try { localStorage.setItem('videoArticleHistory', JSON.stringify(history)); } catch (e) { console.warn("Could not save history to localStorage", e); }
     }
 
     function renderHistoryList() {
-        // ... (no changes here) ...
-        historyListUl.innerHTML = '';
+        historyListUl.innerHTML = ''; // Clear existing list
         if (history.length === 0) {
             noHistoryP.style.display = 'block';
             historyListUl.style.display = 'none';
@@ -215,8 +222,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const listItem = document.createElement('li');
                 listItem.className = 'p-2 hover:bg-gray-200 rounded cursor-pointer text-sm text-gray-600 truncate';
                 listItem.textContent = articleData.video_data.title || 'Untitled Video';
-                listItem.title = articleData.video_data.title || 'Untitled Video';
-                listItem.dataset.historyIndex = index;
+                listItem.title = articleData.video_data.title || 'Untitled Video'; // Tooltip for full title
+                listItem.dataset.historyIndex = index; // Store index for retrieval
                 listItem.addEventListener('click', () => {
                     loadArticleFromHistory(index);
                 });
@@ -226,16 +233,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function setActiveHistoryItem(articleVideoId) {
-        // ... (no changes here) ...
         const listItems = historyListUl.querySelectorAll('li');
         let itemToActivate = null;
+
         listItems.forEach(item => {
-            item.classList.remove('active-history-item');
+            item.classList.remove('active-history-item'); // Reset all items
             const itemIndex = parseInt(item.dataset.historyIndex);
             if (history[itemIndex] && history[itemIndex].video_data.video_id === articleVideoId) {
                 itemToActivate = item;
             }
         });
+
         if (itemToActivate) {
             itemToActivate.classList.add('active-history-item');
             currentActiveHistoryItem = itemToActivate;
@@ -245,10 +253,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function loadArticleFromHistory(index) {
-        // ... (no changes here) ...
         if (index >= 0 && index < history.length) {
             const articleData = history[index];
             console.log("Loading from history:", articleData.video_data.title);
+            // Render the output without treating it as a new submission (won't re-add to history top)
             renderOutput(articleData, false);
         }
     }
@@ -257,15 +265,14 @@ document.addEventListener('DOMContentLoaded', () => {
         clearError();
         outputSection.style.display = 'block';
 
-        // ... (video player and history update logic remain the same) ...
-        console.log("Data for player in renderOutput:", data.video_data);
         if (data.video_data && data.video_data.video_id) {
             loadOrUpdateYouTubePlayer(data.video_data.video_id, data.video_data.title);
             if (isNewSubmission) {
-                updateHistory(data);
+                updateHistory(data); // Update history only for new submissions
             }
-            setActiveHistoryItem(data.video_data.video_id);
+            setActiveHistoryItem(data.video_data.video_id); // Set active item whether new or from history
         } else {
+            // No video data, hide player and clear active history item
             loadOrUpdateYouTubePlayer(null, null);
             if (currentActiveHistoryItem) {
                 currentActiveHistoryItem.classList.remove('active-history-item');
@@ -273,25 +280,28 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // ... (summary and ToC rendering remain the same) ...
+        // Summary
         if (data.llm_article_data && data.llm_article_data.summary) {
-            summaryContentDiv.innerHTML = '';
+            summaryContentDiv.innerHTML = ''; // Clear previous
             const summaryParagraph = document.createElement('p');
+            // Basic formatting: replace newlines with <br> for display
             summaryParagraph.innerHTML = data.llm_article_data.summary.replace(/\n- /g, '<br>- ').replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>');
             summaryContentDiv.appendChild(summaryParagraph);
         } else {
             summaryContentDiv.innerHTML = '<p>No summary available.</p>';
         }
 
-        tocListUl.innerHTML = '';
+        // Table of Contents
+        tocListUl.innerHTML = ''; // Clear previous
         if (data.llm_article_data && data.llm_article_data.table_of_contents && data.llm_article_data.table_of_contents.length > 0) {
             data.llm_article_data.table_of_contents.forEach((item, index) => {
                 const listItem = document.createElement('li');
                 const link = document.createElement('a');
+                // Create a somewhat unique ID for linking, converting item to lowercase and replacing spaces
                 const sectionId = `section-${encodeURIComponent(item.replace(/\s+/g, '-').toLowerCase())}`;
                 link.href = `#${sectionId}`;
                 link.textContent = item;
-                link.className = "hover:underline text-indigo-600 hover:text-indigo-800";
+                link.className = "hover:underline text-indigo-600 hover:text-indigo-800"; // Added styling
                 link.addEventListener('click', (e) => {
                     e.preventDefault();
                     const targetElement = document.getElementById(sectionId);
@@ -307,33 +317,34 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
 
-        fullArticleTextDiv.innerHTML = '';
+        // Full Article Text
+        fullArticleTextDiv.innerHTML = ''; // Clear previous
         if (data.llm_article_data && data.llm_article_data.article_sections && data.llm_article_data.article_sections.length > 0) {
-            data.llm_article_data.article_sections.forEach((section_item, index) => { // Renamed 'section' to 'section_item'
+            data.llm_article_data.article_sections.forEach((section_item, index) => {
                 const sectionContainer = document.createElement('div');
                 sectionContainer.className = 'mb-6';
-                // Use section_item.heading for ID generation
+                // Use section_item.heading for ID generation, with a fallback for untitled sections
                 const sectionId = `section-${encodeURIComponent(section_item.heading?.replace(/\s+/g, '-').toLowerCase() || `untitled-section-${index}`)}`;
                 sectionContainer.id = sectionId;
 
                 const heading = document.createElement('h4');
                 heading.className = 'text-lg font-semibold mb-2 text-gray-800';
-                heading.textContent = section_item.heading || 'Untitled Section'; // Use section_item.heading
+                heading.textContent = section_item.heading || 'Untitled Section';
                 sectionContainer.appendChild(heading);
 
-                // NEW: Process content_block and append timestamp icon
                 const contentBlockText = section_item.content_block || '';
-                const timestampSeconds = section_item.timestamp_seconds; // This is a float or null
+                const timestampSeconds = section_item.timestamp_seconds;
 
-                // Paragraph handling for content_block_text
+                // Create paragraphs from content_block, splitting by newline characters
                 const paragraphs = contentBlockText
-                                    .replace(/\r\n/g, '\n')
-                                    .split(/\n+/)
-                                    .filter(p => p.trim() !== '');
+                                    .replace(/\r\n/g, '\n') // Normalize line endings
+                                    .split(/\n+/)           // Split by one or more newlines
+                                    .filter(p => p.trim() !== ''); // Remove empty paragraphs
 
                 let contentHtml = paragraphs.map(pText => `<p class="mb-2">${pText}</p>`).join('');
 
-                // Append timestamp icon if timestamp_seconds is valid
+
+                // Append timestamp icon if timestamp_seconds is valid and we have video data
                 if (timestampSeconds !== null && !isNaN(parseFloat(timestampSeconds)) && data.video_data && data.video_data.video_id) {
                     const totalSeconds = parseFloat(timestampSeconds);
                     const displayHours = Math.floor(totalSeconds / 3600);
@@ -343,33 +354,28 @@ document.addEventListener('DOMContentLoaded', () => {
                     const formattedTimeForTitle = `${String(displayHours).padStart(2, '0')}:${String(displayMinutes).padStart(2, '0')}:${String(displaySeconds).padStart(2, '0')}`;
                     const playIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 inline-block align-middle ml-1 text-indigo-600 hover:text-indigo-800"><path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" /></svg>`;
 
-                    // Append the icon link after the content paragraph(s) for this block
-                    // If contentHtml is empty, it will just add the icon. If there are paragraphs, it adds after the last one.
-                    // A simple way is to wrap contentHtml and the icon in a new div or just append to the string.
-                    // To ensure it's visually after the text, we can add it as a separate element or cleverly append.
-                    // For simplicity here, we'll append it to the HTML string.
-                    // It might be better to append it to the last <p> tag's innerHTML if one exists, or add as a sibling.
-                    // Let's create a paragraph that just holds the icon if contentHtml itself is just text, or append.
-                    
                     const timestampLink = ` <a href="#" 
                                                data-video-id="${data.video_data.video_id}" 
                                                data-timestamp="${Math.floor(totalSeconds)}" 
                                                class="youtube-timestamp-link" 
                                                title="Play from ${formattedTimeForTitle}">${playIconSvg}</a>`;
                     
-                    // If contentHtml ends with </p>, insert before the last </p> for better flow,
-                    // otherwise, just append. This is a heuristic.
+                    // Append the timestamp link. If contentHtml ends with </p>, insert before. Otherwise, just append.
                     if (contentHtml.endsWith('</p>')) {
                         contentHtml = contentHtml.substring(0, contentHtml.length - 4) + timestampLink + '</p>';
-                    } else {
-                        contentHtml += timestampLink;
+                    } else if (contentHtml.trim() === '') { // If no text content, just the icon link
+                        contentHtml = `<p class="mb-2">${timestampLink}</p>`;
+                    }
+                     else {
+                        contentHtml += timestampLink; // Append to existing non-paragraph content or as a new line
                     }
                 }
-
+                
                 const contentDiv = document.createElement('div');
                 contentDiv.innerHTML = contentHtml;
 
-                if (section_item.relevant_to_search_intent) { // Use section_item
+
+                if (section_item.relevant_to_search_intent) {
                     sectionContainer.classList.add('bg-yellow-100', 'border-l-4', 'border-yellow-500', 'p-3', 'rounded-r-md');
                 }
 
@@ -380,20 +386,22 @@ document.addEventListener('DOMContentLoaded', () => {
             fullArticleTextDiv.innerHTML = '<p>No article content available.</p>';
         }
 
-        // ... (copy to clipboard button logic remains the same) ...
-        if (data.llm_article_data && (data.llm_article_data.summary || data.llm_article_data.article_sections?.length > 0)) {
+        // Copy to Clipboard Button
+        if (data.llm_article_data && (data.llm_article_data.summary || (data.llm_article_data.article_sections && data.llm_article_data.article_sections.length > 0))) {
             copyToClipboardButton.style.display = 'inline-block';
         } else {
             copyToClipboardButton.style.display = 'none';
         }
 
+        // Scroll to output only for new submissions
         if (isNewSubmission) {
              outputSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
     }
 
+
+    // --- Form Submission ---
     if (videoForm) {
-        // ... (form submission logic remains the same) ...
         videoForm.addEventListener('submit', async (event) => {
             event.preventDefault();
             clearError();
@@ -408,14 +416,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
+            // --- START: New URL Formatting Logic ---
             const questionMarkIndex = rawVideoUrl.indexOf('?');
             let formattedVideoUrl = rawVideoUrl;
+
             if (questionMarkIndex !== -1) {
                 formattedVideoUrl = rawVideoUrl.substring(0, questionMarkIndex);
             }
+            // --- END: New URL Formatting Logic ---
 
+            // Validate the *formatted* URL before sending
             try {
-                new URL(formattedVideoUrl);
+                new URL(formattedVideoUrl); // General URL format check
+                // YouTube specific format check
                 if (!/^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/)/.test(formattedVideoUrl)) {
                     displayError('URL must be a valid YouTube video link (e.g., youtube.com/watch?v=... or youtu.be/...).');
                     showLoading(false);
@@ -431,7 +444,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const requestBody = { video_url: formattedVideoUrl };
                 if (searchIntentValue) { requestBody.search_intent = searchIntentValue; }
 
-                const response = await fetch(`/api/process-video`, {
+                // API call to Vercel Serverless Function
+                const response = await fetch(`/api/process-video`, { // Path relative to Vercel deployment root
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -440,44 +454,69 @@ document.addEventListener('DOMContentLoaded', () => {
                     body: JSON.stringify(requestBody)
                 });
 
-                showLoading(false);
+                showLoading(false); // Hide loading indicator after fetch attempt
 
-                if (!response.ok) {
-                    let errorData;
-                    try { errorData = await response.json(); }
-                    catch (e) { errorData = { detail: `HTTP error! Status: ${response.status} - ${response.statusText}` }; }
-                    console.error('API Error Response:', errorData);
-                    displayError(errorData.detail || `An API error occurred: ${response.status}`);
+                let data;
+                try {
+                    data = await response.json(); // Try to parse JSON regardless of status for more info
+                } catch (e) {
+                    // If response is not JSON (e.g. HTML error page from proxy/Vercel)
+                    console.error('API response was not JSON:', e);
+                    displayError(`An unexpected error occurred. Status: ${response.status}. Please check server logs.`);
                     outputSection.style.display = 'none';
                     videoPlayerSection.style.display = 'none';
                     copyToClipboardButton.style.display = 'none';
                     return;
                 }
 
-                const data = await response.json();
-                console.log('API Success Response:', data);
 
+                console.log('API Response Status:', response.status);
+                console.log('API Response Data:', data);
+
+
+                if (!response.ok) {
+                    console.error('API Error Response Data:', data);
+                    // Use detail from FastAPI (if available and proxied) or a generic message
+                    const errorMessage = data.detail || data.message || `An API error occurred: ${response.status}`;
+                    displayError(errorMessage);
+                    outputSection.style.display = 'none';
+                    // videoPlayerSection.style.display = 'none'; // Keep player if previously successful
+                    copyToClipboardButton.style.display = 'none';
+                    return;
+                }
+
+                // Handle cases where response is OK, but data might indicate an issue from backend logic
                 if (data.message?.toLowerCase().includes("failed") || (data.video_data && data.video_data.error)) {
                     displayError(data.message || (data.video_data && data.video_data.error) || "Processing failed, please check the video URL or try again.");
                     outputSection.style.display = 'none';
-                    videoPlayerSection.style.display = 'none';
                     copyToClipboardButton.style.display = 'none';
                 } else if (data.llm_article_data && data.llm_article_data.summary?.toLowerCase().includes("error:")) {
+                     // Specifically handle errors reported in the LLM summary
                     displayError(`Processing Error: ${data.llm_article_data.summary}`);
                     outputSection.style.display = 'none';
-                    videoPlayerSection.style.display = 'none';
                     copyToClipboardButton.style.display = 'none';
-                } else if (data.llm_article_data && (data.llm_article_data.summary || data.llm_article_data.article_sections?.length > 0)) {
+                } else if (data.llm_article_data && (data.llm_article_data.summary || (data.llm_article_data.article_sections && data.llm_article_data.article_sections.length > 0))) {
+                    // Successful processing with article data
                     renderOutput(data, true);
-                } else {
+                } else if (data.video_data && !data.llm_article_data && !data.video_data.error) {
+                    // Successfully fetched video metadata but no LLM article (e.g., no transcript)
+                     renderOutput(data, true); // Still render what we have
+                     // Optionally, display a specific message if llm_article_data is null/empty
+                     if (!data.llm_article_data || (!data.llm_article_data.summary && (!data.llm_article_data.article_sections || data.llm_article_data.article_sections.length === 0))) {
+                        summaryContentDiv.innerHTML = '<p>Video metadata fetched, but no article content could be generated (e.g., missing transcript or LLM processing issue).</p>';
+                        tocListUl.innerHTML = '';
+                        fullArticleTextDiv.innerHTML = '';
+                     }
+                }
+                else {
+                    // Fallback for unexpected successful responses without clear article data or known errors
                     displayError("Received data from backend, but no article content was generated or an unknown error occurred.");
                     outputSection.style.display = 'none';
-                    videoPlayerSection.style.display = 'none';
                     copyToClipboardButton.style.display = 'none';
                 }
 
-            } catch (error) {
-                console.error('Fetch API Call Error:', error);
+            } catch (error) { // Catch network errors or issues with the fetch call itself
+                console.error('Fetch API Call Error (outer catch):', error);
                 showLoading(false);
                 displayError('Failed to connect to the server or network error. Please try again.');
                 outputSection.style.display = 'none';
@@ -489,10 +528,8 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error("Video form not found!");
     }
 
+    // --- Copy to Clipboard ---
     if(copyToClipboardButton) {
-        // ... (copy to clipboard logic remains largely the same, might need slight adjustment if icon text is copied) ...
-        // For now, this will copy the icon's SVG code if it's inside the paragraph text.
-        // A more advanced copy would strip HTML or specifically format.
         copyToClipboardButton.addEventListener('click', () => {
             let textToCopy = "";
             const articleTitleElement = document.getElementById('video-player-title');
@@ -516,39 +553,44 @@ document.addEventListener('DOMContentLoaded', () => {
             const fullArticleElement = document.getElementById('full-article-text');
             if (fullArticleElement && fullArticleElement.innerText?.trim() && !fullArticleElement.innerText.toLowerCase().includes("no article content")) {
                 textToCopy += "Full Article:\n";
-                const sections = fullArticleElement.querySelectorAll('div.mb-6');
+                const sections = fullArticleElement.querySelectorAll('div.mb-6'); // Assuming each section is in such a div
                 sections.forEach(sectionDiv => {
                     const heading = sectionDiv.querySelector('h4');
-                    const contentParagraphs = sectionDiv.querySelectorAll('div > p'); // Paragraphs within the content div
+                    // Attempt to get only paragraph text, excluding the SVG link text if possible
+                    let contentText = "";
+                    const contentParagraphs = sectionDiv.querySelectorAll('div > p'); // Paragraphs inside content div
 
+                    if (contentParagraphs.length > 0) {
+                        contentParagraphs.forEach(p => {
+                            // Clone the paragraph, remove the timestamp link, then get innerText
+                            const pClone = p.cloneNode(true);
+                            const timestampLinkClone = pClone.querySelector('a.youtube-timestamp-link');
+                            if (timestampLinkClone) {
+                                timestampLinkClone.remove();
+                            }
+                            contentText += pClone.innerText.trim() + "\n";
+                        });
+                    } else { // Fallback if content is not in <p> tags directly under the content div
+                        const directContentDiv = sectionDiv.querySelector('div'); // The div holding content (after h4)
+                         if (directContentDiv) {
+                            const divClone = directContentDiv.cloneNode(true);
+                            const tsLinksInDiv = divClone.querySelectorAll('a.youtube-timestamp-link');
+                            tsLinksInDiv.forEach(link => link.remove());
+                            contentText = divClone.innerText.trim();
+                         }
+                    }
+                    
                     if (heading) {
                         textToCopy += "\n## " + heading.innerText.trim() + "\n";
                     }
-                    if (contentParagraphs.length > 0) {
-                        contentParagraphs.forEach(p => {
-                             // Get innerText of paragraph. If it contains the SVG, this might be clunky.
-                             // For a cleaner copy, you might want to clone the paragraph, remove the SVG link, then get innerText.
-                             // Simple approach for now:
-                            let pText = p.innerText.trim();
-                            // Attempt to remove the visual space taken by SVG if it was just an icon.
-                            // This is a heuristic. If SVG had actual text, it would be removed too.
-                            // A more robust solution would be to have a data-attribute on the link or not include it in innerText.
-                            pText = pText.replace(/\s*\u25B6\s*/g, ' ').trim(); // Replace play icon if it got copied as a character
-                            if (pText) {
-                                textToCopy += pText.replace(/\n+/g, '\n') + "\n\n";
-                            }
-                        });
-                    } else { // Fallback if direct content div without <p> tags
-                        const directContentDiv = sectionDiv.querySelector('div');
-                        if (directContentDiv && directContentDiv.innerText) {
-                           textToCopy += directContentDiv.innerText.trim().replace(/\n+/g, '\n') + "\n\n";
-                        }
+                    if (contentText.trim()) {
+                        textToCopy += contentText.trim().replace(/\n+/g, '\n') + "\n\n"; // Ensure single newlines between paragraphs from contentText
                     }
                 });
             }
 
-            textToCopy = textToCopy.trim();
-            if (textToCopy.replace(articleTitle, "").trim()) {
+            textToCopy = textToCopy.trim(); // Final trim
+            if (textToCopy.replace(articleTitle, "").trim()) { // Check if there's more than just the title
                 navigator.clipboard.writeText(textToCopy).then(() => {
                     alert('Article content copied to clipboard!');
                 }).catch(err => {
@@ -560,5 +602,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-    renderHistoryList();
+
+    // Initial Load
+    // Load history from localStorage (optional)
+    // try {
+    //     const storedHistory = localStorage.getItem('videoArticleHistory');
+    //     if (storedHistory) {
+    //         history = JSON.parse(storedHistory);
+    //     }
+    // } catch (e) { console.warn("Could not load history from localStorage", e); }
+    renderHistoryList(); // Render history on page load (will show "no history" if empty)
 });
